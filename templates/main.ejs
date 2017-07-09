@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Openshift Learing</title>
+    <script src='http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css">
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+    <style type="text/css">
+      form {
+        display: inline-block;
+      }
+      .form-group {
+        text-align: center;
+        padding-bottom: 25px;
+      }
+      #todo {
+        margin: 0 auto;
+        width: 500px;
+      }
+      a.close {
+        float: right;
+      }
+      @-moz-document url-prefix() {
+        fieldset { display: table-cell; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="title">
+      <h3 class="text-left" style="display: inline-block;">Welcome <%= name %>!!,</h3>
+      <button name="logout" onclick="logout()" style="float: right; margin: 10px;" 
+              class="btn btn-danger">Logout</button>
+
+      
+      <div class="form-group">
+        <h1>To-Do <small>List</small></h1>
+        <form role="form" >
+          <input type="text" class="form-control" placeholder="Your Task" name="task">
+        </form>
+        <button type="button" class="btn btn btn-primary" id="addTodo">Add</button>
+      </div>
+      
+      <% var data = JSON.parse(res) %>
+      <!-- TODO LIST -->
+      <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered" style="width: 70%; margin: auto;">
+
+          <thead>
+            <tr>
+              <th>Todo</th>
+              <th>Created On</th>
+              <th>Edit</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <% for(var i=0; i < data.length; i++) {%>
+            <tr>
+              <td>
+                <%= data[i]['todo'] %>
+              </td>
+              <td>
+                <%= data[i]['createdon'] %>
+              </td>
+              <td>
+                <button type="button" class="btn btn-default btn-sm" onclick="editTodo(this, '<%= data[i].id %>')">
+                  <span class="glyphicon glyphicon-pencil"></span> Edit
+                </button>
+              </td>
+              <td>
+                <button type="button" class="btn btn-default btn-sm" onclick="deleteTodo('<%= data[i].id %>')">
+                  <span class="glyphicon glyphicon-trash"></span> Delete
+                </button>
+              </td>
+            </tr>
+            <% } %>
+
+          </tbody>
+        </table>
+      </div>
+      
+    </div>
+    <script type="text/javascript">
+    
+      $(document).ready(function () {
+        $("button#addTodo").click(function () {
+
+          var textTodo = $("input[name=task]").val();
+          var userId = <%- userId %>;
+          console.log(textTodo+ "  "+ userId);
+          $.ajax({
+            type: "POST",
+            url: "/insertTodo",
+            data: { "todoItem": textTodo, "uid": userId },
+            success: function(data, textStatus, jqXHR){
+              if(data == "Inserted"){
+                window.location.reload();
+              }
+            },
+            error: function (jqXHR, textStatus, errorThrown)
+            {
+              alert('Error in Saving');
+            }
+          });
+        });
+      });
+
+      function deleteTodo(todoID){
+          $.ajax({
+            type: "POST",
+            url: "/deleteTodo",
+            data: { "todoID": todoID },
+            success: function(data, textStatus, jqXHR){
+              if(data == "Deleted"){
+                window.location.reload();
+              }
+            },
+            error: function (jqXHR, textStatus, errorThrown)
+            {
+              alert('Error in Deleting');
+            }
+          });
+      }
+
+      function editTodo(e, todoID){
+        var btn = $(e);
+        var btnParent = btn.parents('tr');
+        var todoTD = btnParent.children()[0];
+        var str = todoTD.innerText;
+        $(todoTD).empty();
+        $(todoTD).append('<input type="text" value="'+str+'">');
+
+        /* Change button to update */
+        btn.html('<span class="glyphicon glyphicon-ok"></span> Update');
+        btn.attr('onclick','updateMe(this,'+todoID+')');
+        
+        /* Button Cancel */
+        btn.parents('td').append('<button class="btn btn-default btn-sm" style="margin-left:5px;" onclick="cancelEdit(this,'+todoID+')"><span class="glyphicon glyphicon-remove"></span> Cancel</button>');
+      }
+
+      function updateMe(e, todoID){
+        var btn = $(e);
+        var btnParent = btn.parents('tr');
+        var todoTD = btnParent.children()[0];
+        var str = todoTD.children[0].value;
+
+        /* Change button to update */
+        btn.html('<span class="glyphicon glyphicon-pencil"></span> Edit');
+        btn.attr('onclick','editme(this)');
+
+        $.ajax({
+            type: "POST",
+            url: "/updateTodo",
+            data: { "todoItem": str, "id": todoID },
+            success: function(data, textStatus, jqXHR){
+              if(data == "Updated"){
+                window.location.reload();
+              }
+            },
+            error: function (jqXHR, textStatus, errorThrown)
+            {
+              alert('Error in Saving');
+            }
+          });
+      }
+
+      function cancelEdit(ele, todoID){
+        var btn = $(ele);
+        
+        /* Changing Back input text to normal */
+        var btnParent = btn.parents('tr');
+        var todoTD = btnParent.children()[0];
+        var str = todoTD.children[0].value
+        $(todoTD).empty();
+        $(todoTD).append('<td>'+str+'</td>');
+
+        /* Updating the cancel button */
+        var btnParent = btn.parents('td');
+        btnParent.empty();
+        btnParent.append('<button type="button" class="btn btn-default btn-sm" onclick="editTodo(this,'+todoID+')"><span class="glyphicon glyphicon-pencil"></span> Edit</button>');
+
+        
+      }
+
+      function logout(){
+        window.history.pushState('obj', 'newtitle', '/logout');
+        event.preventDefault();
+        window.location.reload();
+      }
+
+    </script>
+  </body>
+</html>
